@@ -1,6 +1,7 @@
- require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config(); // Fallback if process.env was set elsewhere
 
 const express = require('express');
 const helmet = require('helmet');

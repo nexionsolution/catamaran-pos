@@ -8,16 +8,12 @@ out
 # Environment variables and secrets
 .env
 .env.*
-!.env.example
-
-# Local data and backups
-*.db
-*.sqlite
-*.sqlite3
-Catamaran-Backups/
-# Local backups and database exports
-backups/
+*.env
 backend/.env
+frontend/.env
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 
 # IDE and editor settings
 .vscode/

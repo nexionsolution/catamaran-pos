@@ -15,7 +15,7 @@
     "preview": "npm run preview --prefix frontend",
     "start": "node backend/server.js",
     "typecheck": "npm run typecheck --prefix frontend",
-    "lint": "eslint frontend/",
+    "lint": "npm run lint --prefix frontend",
     "format": "prettier --write ."
   },
   "dependencies": {
