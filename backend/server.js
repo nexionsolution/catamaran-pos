@@ -37,6 +37,26 @@ app.use(
 app.use(cors());
 app.use(express.json({ limit: '50kb' }));
 
+// Comprehensive input sanitization middleware to prevent NoSQL Operator Injection (OWASP Top 10)
+function sanitizeNoSqlInput(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  for (const key of Object.keys(payload)) {
+    if (key.startsWith('$') || key.includes('.')) {
+      delete payload[key];
+    } else if (typeof payload[key] === 'object' && payload[key] !== null) {
+      sanitizeNoSqlInput(payload[key]);
+    }
+  }
+  return payload;
+}
+
+app.use((req, _res, next) => {
+  if (req.body) sanitizeNoSqlInput(req.body);
+  if (req.query) sanitizeNoSqlInput(req.query);
+  if (req.params) sanitizeNoSqlInput(req.params);
+  next();
+});
+
 // Helper for Sri Lanka (Asia/Colombo, UTC+05:30) date & time representation
 function getSriLankaDateTime(date = new Date()) {
   const d = date instanceof Date ? date : new Date(date);
@@ -673,13 +693,13 @@ app.get('/api/bills', async (req, res) => {
     }
 
     const filter = {};
-    if (startDate || endDate) {
+    if (typeof startDate === 'string' || typeof endDate === 'string') {
       filter.date = {};
-      if (startDate) filter.date.$gte = startDate;
-      if (endDate) filter.date.$lte = endDate;
+      if (typeof startDate === 'string') filter.date.$gte = String(startDate);
+      if (typeof endDate === 'string') filter.date.$lte = String(endDate);
     }
-    if (status) {
-      filter.status = status;
+    if (typeof status === 'string' && status.trim()) {
+      filter.status = { $eq: String(status).trim() };
     }
 
     const bills = await Bill.find(filter).sort({ createdAt: -1 });
@@ -3775,7 +3795,10 @@ app.get('/api/credit/:sourceType/:sourceId/history', async (req, res) => {
       return res.status(400).json({ message: 'Invalid sourceId' });
     }
 
-    const payments = await Payment.find({ sourceType, sourceId }).sort({ paymentTimestamp: 1 }).lean();
+    const payments = await Payment.find({
+      sourceType: { $eq: String(sourceType) },
+      sourceId: new mongoose.Types.ObjectId(String(sourceId))
+    }).sort({ paymentTimestamp: 1 }).lean();
     res.json(payments);
   } catch (error) {
     console.error('Credit history error:', error.message);
@@ -3975,22 +3998,22 @@ app.get('/api/lessons', async (req, res) => {
     }
 
     const filter = {};
-    if (startDate || endDate) {
+    if (typeof startDate === 'string' || typeof endDate === 'string') {
       filter.startDate = {};
-      if (startDate) filter.startDate.$gte = startDate;
-      if (endDate) filter.startDate.$lte = endDate;
+      if (typeof startDate === 'string') filter.startDate.$gte = String(startDate);
+      if (typeof endDate === 'string') filter.startDate.$lte = String(endDate);
     }
-    if (status) {
-      filter.status = status;
+    if (typeof status === 'string' && status.trim()) {
+      filter.status = { $eq: String(status).trim() };
     }
-    if (paymentStatus) {
-      filter.paymentStatus = paymentStatus;
+    if (typeof paymentStatus === 'string' && paymentStatus.trim()) {
+      filter.paymentStatus = { $eq: String(paymentStatus).trim() };
     }
-    if (instructorId) {
+    if (instructorId && typeof instructorId === 'string') {
       if (!mongoose.isValidObjectId(instructorId)) {
         return res.status(400).json({ message: 'Invalid instructorId query filter' });
       }
-      filter.instructorId = instructorId;
+      filter.instructorId = new mongoose.Types.ObjectId(String(instructorId));
     }
 
     const lessons = await Lesson.find(filter).sort({ createdAt: -1 });

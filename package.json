@@ -2,6 +2,7 @@
   "name": "catamaran-pos",
   "version": "1.0.2",
   "description": "Catamaran Surf Club & Restaurant POS Terminal - Web Application",
+  "main": "backend/server.js",
   "workspaces": [
     "frontend",
     "backend"
