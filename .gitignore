@@ -19,6 +19,10 @@ Catamaran-Backups/
 backups/
 backend/.env
 
+# IDE and editor settings
+.vscode/
+.idea/
+
 # Electron release builds
 release/
 *.exe
