@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { formatLKR } from '../data/demoData'
+import { API_ROOT } from '../services/api'
 import {
   MenuCategory,
   MenuFilterCategory,
@@ -79,7 +80,7 @@ interface ApiMenuItem {
   updatedAt?: string
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/menu` : '/api/menu'
+const API_BASE_URL = `${API_ROOT}/menu`
 
 function mapApiToMenuItem(item: ApiMenuItem): MenuItem {
   return {
@@ -99,9 +100,22 @@ function mapApiToMenuItem(item: ApiMenuItem): MenuItem {
 }
 
 export const MenuManagement: React.FC<MenuManagementProps> = ({ onNavigate }) => {
-  // Live products state connected to Express / MongoDB Atlas backend
-  const [products, setProducts] = useState<MenuItem[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+  // Live products state connected to Express / MongoDB Atlas backend with instant cached initialization
+  const [products, setProducts] = useState<MenuItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('catamaran_cached_menu_products')
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return []
+  })
+  const [isLoading, setIsLoading] = useState<boolean>(() => products.length === 0)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -158,13 +172,21 @@ export const MenuManagement: React.FC<MenuManagementProps> = ({ onNavigate }) =>
       if (!Array.isArray(data)) {
         throw new Error('Invalid data format received from server')
       }
-      setProducts(data.map(mapApiToMenuItem))
+      const mapped = data.map(mapApiToMenuItem)
+      setProducts(mapped)
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('catamaran_cached_menu_products', JSON.stringify(mapped))
+        } catch {
+          // ignore
+        }
+      }
     } catch (err: unknown) {
       console.error('Failed to load menu items:', err)
       const errorMsg =
         err instanceof Error
           ? err.message
-          : 'Could not connect to backend server at http://127.0.0.1:5000'
+          : 'Could not connect to backend server'
       setFetchError(errorMsg)
       showToast('Failed to load menu items from MongoDB Atlas.')
     } finally {
@@ -186,7 +208,15 @@ export const MenuManagement: React.FC<MenuManagementProps> = ({ onNavigate }) =>
           throw new Error('Invalid data format received from server')
         }
         if (!ignore) {
-          setProducts(data.map(mapApiToMenuItem))
+          const mapped = data.map(mapApiToMenuItem)
+          setProducts(mapped)
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('catamaran_cached_menu_products', JSON.stringify(mapped))
+            } catch {
+              // ignore
+            }
+          }
         }
       } catch (err: unknown) {
         if (!ignore) {
@@ -194,7 +224,7 @@ export const MenuManagement: React.FC<MenuManagementProps> = ({ onNavigate }) =>
           const errorMsg =
             err instanceof Error
               ? err.message
-              : 'Could not connect to backend server at http://127.0.0.1:5000'
+              : 'Could not connect to backend server'
           setFetchError(errorMsg)
           showToast('Failed to load menu items from MongoDB Atlas.')
         }
@@ -1108,7 +1138,7 @@ export const MenuManagement: React.FC<MenuManagementProps> = ({ onNavigate }) =>
                     </div>
                   </td>
                 </tr>
-              ) : fetchError ? (
+              ) : fetchError && products.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="menu-table-empty">
                     <div className="empty-state-box">

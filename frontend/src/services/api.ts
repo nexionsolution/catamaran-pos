@@ -21,8 +21,8 @@ import {
   PosSettings
 } from '../types'
 
-const rawApiUrl = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim().replace(/\/+$/, '') : ''
-const API_ROOT = rawApiUrl
+export const rawApiUrl = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim().replace(/\/+$/, '') : ''
+export const API_ROOT = rawApiUrl
   ? (rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`)
   : '/api'
 
