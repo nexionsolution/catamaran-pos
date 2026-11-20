@@ -158,18 +158,22 @@ export function getPendingOfflineCount(): number {
 export async function pingBackend(): Promise<boolean> {
   if (typeof window === 'undefined') return true
   try {
-    const baseUrl = import.meta.env.VITE_API_URL || ''
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 3500)
+    const rawUrl = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim().replace(/\/+$/, '') : ''
+    const cleanBase = rawUrl.endsWith('/api') ? rawUrl.slice(0, -4) : rawUrl
+    const healthUrl = cleanBase ? `${cleanBase}/api/health` : '/api/health'
 
-    const res = await fetch(`${baseUrl}/api/health`, {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 4000)
+
+    const res = await fetch(healthUrl, {
       method: 'GET',
       cache: 'no-store',
       signal: controller.signal
     })
     clearTimeout(timeoutId)
 
-    const ok = res.ok
+    const data = await res.json().catch(() => ({}))
+    const ok = res.ok && data.database !== 'disconnected'
     if (ok !== isOnlineState) {
       isOnlineState = ok
       notifyNetworkSyncListeners()
