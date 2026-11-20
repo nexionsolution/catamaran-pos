@@ -4891,7 +4891,9 @@ async function startServer() {
     console.log('MongoDB connection established');
 
     // Serve static frontend assets in production web mode if dist exists
-    const distPath = path.join(__dirname, '../dist');
+    const distPath = fs.existsSync(path.join(__dirname, '../dist'))
+      ? path.join(__dirname, '../dist')
+      : path.join(__dirname, '../frontend/dist');
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));
       app.use((req, res, next) => {
@@ -4900,7 +4902,7 @@ async function startServer() {
         }
         next();
       });
-      console.log('Static web client loaded from dist/ folder');
+      console.log(`Static web client loaded from ${distPath}`);
     }
 
     const HOST = process.env.HOST || '0.0.0.0';

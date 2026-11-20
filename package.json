@@ -2,15 +2,19 @@
   "name": "catamaran-pos",
   "version": "1.0.2",
   "description": "Catamaran Surf Club & Restaurant POS Terminal - Web Application",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run dev --prefix frontend",
     "server": "node backend/server.js",
-    "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
+    "dev:all": "concurrently \"npm run server\" \"npm run dev --prefix frontend\"",
+    "build": "npm run build --prefix frontend",
+    "preview": "npm run preview --prefix frontend",
     "start": "node backend/server.js",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "typecheck": "npm run typecheck --prefix frontend",
+    "lint": "eslint frontend/",
     "format": "prettier --write ."
   },
   "dependencies": {
