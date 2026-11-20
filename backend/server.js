@@ -7,6 +7,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const mongoSanitize = require('express-mongo-sanitize');
 
 const MenuItem = require('./models/MenuItem');
 const Bill = require('./models/Bill');
@@ -37,6 +38,7 @@ app.use(
 );
 app.use(cors());
 app.use(express.json({ limit: '50kb' }));
+app.use(mongoSanitize());
 
 // Comprehensive input sanitization middleware to prevent NoSQL Operator Injection (OWASP Top 10)
 function sanitizeNoSqlInput(payload) {
@@ -55,6 +57,19 @@ app.use((req, _res, next) => {
   if (req.body) sanitizeNoSqlInput(req.body);
   if (req.query) sanitizeNoSqlInput(req.query);
   if (req.params) sanitizeNoSqlInput(req.params);
+  next();
+});
+
+// Helper for escaping user input inside regular expressions to prevent ReDoS / NoSQL injection
+function escapeRegex(text) {
+  return typeof text === 'string' ? text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') : '';
+}
+
+// Param middleware to validate MongoDB ObjectId on all ':id' routes
+app.param('id', (req, res, next, id) => {
+  if (!id || typeof id !== 'string' || !mongoose.isValidObjectId(id)) {
+    return res.status(400).json({ message: 'Invalid ID parameter format' });
+  }
   next();
 });
 
@@ -303,8 +318,8 @@ app.post('/api/menu', async (req, res) => {
 
     // Prevent duplicate product names within the same category
     const existingName = await MenuItem.findOne({
-      category,
-      name: { $regex: new RegExp(`^${trimmedName}$`, 'i') }
+      category: { $eq: category },
+      name: { $regex: new RegExp(`^${escapeRegex(trimmedName)}$`, 'i') }
     });
     if (existingName) {
       return res.status(409).json({
@@ -329,7 +344,7 @@ app.post('/api/menu', async (req, res) => {
         $or: [
           { code: cleanCode },
           { legacyCodes: cleanCode },
-          { productName: { $regex: new RegExp(`^${trimmedName}$`, 'i') } }
+          { productName: { $regex: new RegExp(`^${escapeRegex(trimmedName)}$`, 'i') } }
         ]
       });
 
@@ -413,9 +428,9 @@ app.put('/api/menu/:id', async (req, res) => {
 
     // Prevent duplicate product names within the same category (excluding current item)
     const existingName = await MenuItem.findOne({
-      _id: { $ne: req.params.id },
-      category,
-      name: { $regex: new RegExp(`^${trimmedName}$`, 'i') }
+      _id: { $ne: new mongoose.Types.ObjectId(String(req.params.id)) },
+      category: { $eq: category },
+      name: { $regex: new RegExp(`^${escapeRegex(trimmedName)}$`, 'i') }
     });
     if (existingName) {
       return res.status(409).json({
@@ -429,7 +444,7 @@ app.put('/api/menu/:id', async (req, res) => {
     if (stockTracking) {
       let invItem = null;
       if (linkedInvId) {
-        invItem = await InventoryItem.findById(linkedInvId);
+        invItem = await InventoryItem.findById(new mongoose.Types.ObjectId(String(linkedInvId)));
       }
       if (!invItem) {
         invItem = await InventoryItem.findOne({
@@ -437,7 +452,7 @@ app.put('/api/menu/:id', async (req, res) => {
             { code: newCode },
             { code: oldCode },
             { legacyCodes: { $in: [newCode, oldCode] } },
-            { productName: { $regex: new RegExp(`^${trimmedName}$`, 'i') } }
+            { productName: { $regex: new RegExp(`^${escapeRegex(trimmedName)}$`, 'i') } }
           ]
         });
       }
@@ -559,7 +574,7 @@ async function syncLiveRentalTimeOnBill(bill) {
     // 3. Case-insensitive link by customerName
     if (!rental && bill.customerName) {
       rental = await Rental.findOne({
-        customerName: { $regex: new RegExp('^' + bill.customerName.trim() + '$', 'i') },
+        customerName: { $regex: new RegExp('^' + escapeRegex(bill.customerName.trim()) + '$', 'i') },
         status: 'Active'
       });
       if (rental) {
@@ -2031,10 +2046,22 @@ app.put('/api/surfboards/:id', async (req, res) => {
       return res.status(400).json({ message: 'Invalid surfboard ID' });
     }
 
-    const board = await Surfboard.findByIdAndUpdate(req.params.id, req.body, {
-      returnDocument: 'after',
-      runValidators: true
-    });
+    const allowedFields = [
+      'name', 'category', 'length', 'finSetup', 'condition', 'status',
+      'currentRentalId', 'currentLessonId', 'currentCustomer',
+      'rentalStartTime', 'lastReturnedTime', 'damageNotes', 'acquiredDate'
+    ];
+    const updateData = {};
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) {
+        updateData[key] = req.body[key];
+      }
+    }
+    const board = await Surfboard.findByIdAndUpdate(
+      new mongoose.Types.ObjectId(String(req.params.id)),
+      { $set: updateData },
+      { returnDocument: 'after', runValidators: true }
+    );
 
     if (!board) {
       return res.status(404).json({ message: 'Surfboard not found' });
@@ -2080,33 +2107,30 @@ app.get('/api/rentals', async (req, res) => {
 
     const filter = {};
 
-    if (status === 'Completed') {
+    if (typeof status === 'string' && status === 'Completed') {
       filter.status = 'Completed';
-      if (startDate || endDate) {
+      if (typeof startDate === 'string' || typeof endDate === 'string') {
         filter.returnDate = {};
-        if (startDate) filter.returnDate.$gte = startDate;
-        if (endDate) filter.returnDate.$lte = endDate;
+        if (typeof startDate === 'string') filter.returnDate.$gte = String(startDate);
+        if (typeof endDate === 'string') filter.returnDate.$lte = String(endDate);
       }
-    } else if (status === 'Active') {
+    } else if (typeof status === 'string' && status === 'Active') {
       filter.status = 'Active';
-      if (endDate) {
-        filter.startDate = { $lte: endDate };
+      if (typeof endDate === 'string') {
+        filter.startDate = { $lte: String(endDate) };
       }
     } else if (startDate || endDate) {
-      // Both active and completed matching the window:
-      // Completed: returnDate falls within [startDate, endDate]
-      // Active: started on or before endDate
       filter.$or = [
         {
           status: 'Completed',
           returnDate: {
-            ...(startDate ? { $gte: startDate } : {}),
-            ...(endDate ? { $lte: endDate } : {})
+            ...(typeof startDate === 'string' ? { $gte: String(startDate) } : {}),
+            ...(typeof endDate === 'string' ? { $lte: String(endDate) } : {})
           }
         },
         {
           status: 'Active',
-          ...(endDate ? { startDate: { $lte: endDate } } : {})
+          ...(typeof endDate === 'string' ? { startDate: { $lte: String(endDate) } } : {})
         }
       ];
     }
@@ -2717,10 +2741,22 @@ app.put('/api/inventory/:id', async (req, res) => {
       return res.status(400).json({ message: 'Invalid inventory ID' });
     }
 
-    const item = await InventoryItem.findByIdAndUpdate(req.params.id, req.body, {
-      returnDocument: 'after',
-      runValidators: true
-    });
+    const allowedFields = [
+      'productName', 'category', 'code', 'currentQuantity',
+      'reorderThreshold', 'unit', 'unitCost', 'sellingPrice',
+      'supplier', 'lastRestockedAt', 'isActive', 'isArchived', 'legacyCodes'
+    ];
+    const updateData = {};
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) {
+        updateData[key] = req.body[key];
+      }
+    }
+    const item = await InventoryItem.findByIdAndUpdate(
+      new mongoose.Types.ObjectId(String(req.params.id)),
+      { $set: updateData },
+      { returnDocument: 'after', runValidators: true }
+    );
 
     if (!item) {
       return res.status(404).json({ message: 'Inventory item not found' });
@@ -2940,13 +2976,15 @@ app.get('/api/expenses', async (req, res) => {
 
     const filter = {};
 
-    if (startDate || endDate) {
+    if (typeof startDate === 'string' || typeof endDate === 'string') {
       filter.date = {};
-      if (startDate) filter.date.$gte = startDate;
-      if (endDate) filter.date.$lte = endDate;
+      if (typeof startDate === 'string') filter.date.$gte = String(startDate);
+      if (typeof endDate === 'string') filter.date.$lte = String(endDate);
     }
 
-    if (category) filter.category = category;
+    if (typeof category === 'string' && category.trim()) {
+      filter.category = { $eq: String(category).trim() };
+    }
     filter.status = status === 'Cancelled' ? 'Cancelled' : 'Recorded';
 
     const expenses = await Expense.find(filter).sort({
@@ -3041,7 +3079,7 @@ app.patch('/api/expenses/:id/cancel', async (req, res) => {
     }
 
     const expense = await Expense.findOneAndUpdate(
-      { _id: req.params.id, status: 'Recorded' },
+      { _id: new mongoose.Types.ObjectId(String(req.params.id)), status: 'Recorded' },
       { status: 'Cancelled' },
       { returnDocument: 'after', runValidators: true }
     );

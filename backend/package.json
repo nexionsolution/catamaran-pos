@@ -1,19 +1,31 @@
 {
   "name": "backend",
-  "version": "1.0.0",
+  "version": "1.0.2",
+  "description": "Catamaran POS Backend API Server",
   "main": "server.js",
+  "exports": {
+    ".": "./server.js",
+    "./api": "./api/index.js"
+  },
+  "files": [
+    "server.js",
+    "api",
+    "models"
+  ],
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": [
+    "pos",
+    "express",
+    "mongoose"
+  ],
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",
     "express": "^5.3.0",
+    "express-mongo-sanitize": "^2.2.0",
     "helmet": "^8.3.0",
     "mongoose": "^9.11.2"
   }
