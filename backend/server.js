@@ -1,4 +1,6 @@
  require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
 
 const express = require('express');
 const helmet = require('helmet');
@@ -27,7 +29,11 @@ const VALID_CATEGORIES = [
   'Other Services'
 ];
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false
+  })
+);
 app.use(cors());
 app.use(express.json({ limit: '50kb' }));
 
@@ -72,118 +78,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-const https = require('https');
-
-function compareVersions(current, latest) {
-  const parse = (v) => String(v || '').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
-  const [cMaj = 0, cMin = 0, cPat = 0] = parse(current);
-  const [lMaj = 0, lMin = 0, lPat = 0] = parse(latest);
-  if (lMaj > cMaj) return 1;
-  if (lMaj < cMaj) return -1;
-  if (lMin > cMin) return 1;
-  if (lMin < cMin) return -1;
-  if (lPat > cPat) return 1;
-  if (lPat < cPat) return -1;
-  return 0;
-}
-
 app.get('/api/system/version', (req, res) => {
   res.json({
-    name: 'Catamaran POS',
+    name: 'Catamaran POS Web Application',
     version: '1.0.2',
-    repository: 'JayalathGUD/Catamaran-POS',
-    releasesUrl: 'https://github.com/JayalathGUD/Catamaran-POS/releases'
+    environment: 'web'
   });
-});
-
-app.get('/api/system/check-update', (req, res) => {
-  const currentVersion = req.query.currentVersion || req.query.version || '1.0.1';
-  const isSimulated = req.query.simulate === 'true';
-
-  if (isSimulated) {
-    const simVersion = req.query.version || '1.1.0';
-    return res.json({
-      updateAvailable: true,
-      currentVersion,
-      latestVersion: simVersion,
-      releaseName: `Catamaran POS v${simVersion} (Latest Official Release)`,
-      releaseNotes: 'Includes high-speed 80mm thermal receipt printing, live customer tab syncing, and surfboard custom rate controls.',
-      releaseUrl: 'https://github.com/JayalathGUD/Catamaran-POS/releases',
-      publishedAt: new Date().toISOString(),
-      isSimulated: true
-    });
-  }
-
-  const options = {
-    hostname: 'api.github.com',
-    path: '/repos/JayalathGUD/Catamaran-POS/releases/latest',
-    method: 'GET',
-    headers: {
-      'User-Agent': 'Catamaran-POS-Client',
-      'Accept': 'application/vnd.github.v3+json'
-    },
-    timeout: 5000
-  };
-
-  const ghReq = https.request(options, (ghRes) => {
-    let raw = '';
-    ghRes.on('data', (chunk) => { raw += chunk; });
-    ghRes.on('end', () => {
-      try {
-        if (ghRes.statusCode === 200) {
-          const data = JSON.parse(raw);
-          const latestTag = data.tag_name || data.name || '';
-          const isNewer = compareVersions(currentVersion, latestTag) > 0;
-          return res.json({
-            updateAvailable: isNewer,
-            currentVersion,
-            latestVersion: latestTag.replace(/^v/i, ''),
-            releaseName: data.name || latestTag,
-            releaseNotes: data.body || '',
-            releaseUrl: data.html_url || 'https://github.com/JayalathGUD/Catamaran-POS/releases',
-            publishedAt: data.published_at || new Date().toISOString()
-          });
-        } else {
-          return res.json({
-            updateAvailable: false,
-            currentVersion,
-            latestVersion: currentVersion,
-            message: ghRes.statusCode === 404
-              ? 'No GitHub releases found yet for JayalathGUD/Catamaran-POS'
-              : `GitHub check returned status ${ghRes.statusCode}`
-          });
-        }
-      } catch {
-        return res.json({
-          updateAvailable: false,
-          currentVersion,
-          latestVersion: currentVersion,
-          error: 'Failed to parse GitHub response'
-        });
-      }
-    });
-  });
-
-  ghReq.on('timeout', () => {
-    ghReq.destroy();
-    return res.json({
-      updateAvailable: false,
-      currentVersion,
-      latestVersion: currentVersion,
-      message: 'Update check timed out'
-    });
-  });
-
-  ghReq.on('error', (err) => {
-    return res.json({
-      updateAvailable: false,
-      currentVersion,
-      latestVersion: currentVersion,
-      message: 'Unable to reach update server: ' + (err?.message || 'Network error')
-    });
-  });
-
-  ghReq.end();
 });
 
 // ============================================================
@@ -4990,8 +4890,22 @@ async function startServer() {
     await checkReplicaSetSupport();
     console.log('MongoDB connection established');
 
-    const server = app.listen(PORT, '127.0.0.1', () => {
-      console.log(`Backend running at http://127.0.0.1:${PORT}`);
+    // Serve static frontend assets in production web mode if dist exists
+    const distPath = path.join(__dirname, '../dist');
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.use((req, res, next) => {
+        if (req.method === 'GET' && !req.path.startsWith('/api')) {
+          return res.sendFile(path.join(distPath, 'index.html'));
+        }
+        next();
+      });
+      console.log('Static web client loaded from dist/ folder');
+    }
+
+    const HOST = process.env.HOST || '0.0.0.0';
+    const server = app.listen(PORT, HOST, () => {
+      console.log(`Catamaran POS Web Server running at http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
     });
 
     server.on('error', (err) => {
@@ -5007,4 +4921,8 @@ async function startServer() {
   }
 }
 
-startServer();
+module.exports = app;
+
+if (require.main === module) {
+  startServer();
+}

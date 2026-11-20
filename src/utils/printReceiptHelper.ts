@@ -23,12 +23,6 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
     oldFrame.remove()
   }
 
-  // Check if running in Electron environment with direct thermal print IPC
-  if ((window as any).electronAPI?.printThermal) {
-    (window as any).electronAPI.printThermal({ silent: false })
-    return
-  }
-
   // Create clean isolated iframe with explicit 80mm width offscreen
   const iframe = document.createElement('iframe')
   iframe.id = 'pos-silent-print-frame'

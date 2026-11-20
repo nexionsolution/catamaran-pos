@@ -4,6 +4,7 @@ import { formatLKR } from '../data/demoData'
 import { getBills, getInventoryItems, getRentals, getSurfboards } from '../services/api'
 import { downloadBillPDF } from '../utils/billPdfGenerator'
 import { downloadReceiptAsPDF, printThermalReceipt } from '../utils/printReceiptHelper'
+import { useNetworkSync } from '../utils/offlineSync'
 import {
   ActiveRental,
   CompletedRental,
@@ -50,6 +51,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   activeRentals,
   completedRentals
 }) => {
+  const { isOnline, isSyncing, pendingCount, syncNow, lastSyncedAt } = useNetworkSync()
   const [bills, setBills] = useState<HistoryBill[]>([])
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [localBoards, setLocalBoards] = useState<Surfboard[]>([])
@@ -130,6 +132,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return () => {
       ignore = true
     }
+  }, [])
+
+  // Auto-reload data when offline bills sync to MongoDB Atlas
+  useEffect(() => {
+    const handleSyncCompleted = (e: Event) => {
+      const custom = e as CustomEvent<{ synced: number; message: string }>
+      if (custom.detail?.synced > 0) {
+        showToast(`🎉 ${custom.detail.message}`)
+        loadDashboardData()
+      }
+    }
+    window.addEventListener('offline-sync-completed', handleSyncCompleted)
+    return () => window.removeEventListener('offline-sync-completed', handleSyncCompleted)
   }, [])
 
   // Dynamic fleet summary from live boards state
@@ -362,9 +377,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="header-meta">
             <div className="header-top-row">
               <span className="system-location-tag">🌴 Dewata Beach · Galle · Sri Lanka</span>
-              <div className="demo-notice-badge">
-                <span className="demo-pulse-dot" style={{ backgroundColor: '#10b981' }} />
-                <span> ONLINE </span>
+              <div
+                className="demo-notice-badge"
+                style={{
+                  backgroundColor: isSyncing ? '#eff6ff' : isOnline ? '#ecfdf5' : '#fffbeb',
+                  borderColor: isSyncing ? '#bfdbfe' : isOnline ? '#a7f3d0' : '#fde68a',
+                  color: isSyncing ? '#1d4ed8' : isOnline ? '#065f46' : '#92400e'
+                }}
+              >
+                <span
+                  className="demo-pulse-dot"
+                  style={{
+                    backgroundColor: isSyncing
+                      ? '#3b82f6'
+                      : isOnline
+                      ? '#10b981'
+                      : '#f59e0b'
+                  }}
+                />
+                <span style={{ fontWeight: 700 }}>
+                  {isSyncing
+                    ? 'SYNCING...'
+                    : isOnline
+                    ? (pendingCount > 0 ? `ONLINE · ${pendingCount} PENDING SYNC` : 'ONLINE · CLOUD LIVE')
+                    : `OFFLINE MODE · ${pendingCount} QUEUED`}
+                </span>
               </div>
             </div>
             <h1 className="dashboard-heading">Beach Club &amp; POS Dashboard</h1>
@@ -419,26 +456,71 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </section>
 
-      {/* Cloud Sync Status Callout */}
+      {/* Cloud & Offline Sync Status Callout */}
       <div
         className="demo-disclaimer-strip"
         style={{
-          borderColor: 'rgba(16, 185, 129, 0.25)',
-          backgroundColor: 'rgba(16, 185, 129, 0.05)'
+          borderColor: isOnline ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.35)',
+          backgroundColor: isOnline ? 'rgba(16, 185, 129, 0.05)' : '#fffbeb'
         }}
       >
-        <div className="strip-content">
-          <IconCheck size={14} className="strip-icon" style={{ color: '#10b981' }} />
+        <div className="strip-content" style={{ color: isOnline ? '#065f46' : '#92400e' }}>
+          {isOnline ? (
+            <IconCheck size={14} className="strip-icon" style={{ color: '#10b981' }} />
+          ) : (
+            <IconAlertTriangle size={14} className="strip-icon" style={{ color: '#f59e0b' }} />
+          )}
           <span className="strip-text">
-            <strong> Live Connected:</strong>
+            {isOnline ? (
+              <>
+                <strong>Live Connected:</strong> MongoDB Atlas Database synchronized.
+                {lastSyncedAt ? ` (Last sync: ${lastSyncedAt})` : ''}
+              </>
+            ) : (
+              <>
+                <strong>Offline Mode Active:</strong> Working locally without Wi-Fi. Cashiering &amp; 80mm receipts continue uninterrupted.
+              </>
+            )}
           </span>
         </div>
-        <span
-          className="strip-tag"
-          style={{ color: '#059669', borderColor: 'rgba(5, 150, 105, 0.3)' }}
-        >
-          Cloud Live
-        </span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {pendingCount > 0 && (
+            <button
+              type="button"
+              onClick={() => syncNow()}
+              disabled={isSyncing}
+              style={{
+                backgroundColor: '#0284c7',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: isSyncing ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+              title="Upload queued offline bills to MongoDB Atlas"
+            >
+              <IconRotateCcw size={12} style={{ animation: isSyncing ? 'spin 1s linear infinite' : undefined }} />
+              <span>{isSyncing ? 'Syncing...' : `Sync ${pendingCount} Bill${pendingCount > 1 ? 's' : ''} Now`}</span>
+            </button>
+          )}
+
+          <span
+            className="strip-tag"
+            style={{
+              color: isOnline ? '#059669' : '#b45309',
+              borderColor: isOnline ? 'rgba(5, 150, 105, 0.3)' : 'rgba(245, 158, 11, 0.4)',
+              backgroundColor: isOnline ? '#d1fae5' : '#fef3c7'
+            }}
+          >
+            {isOnline ? (pendingCount > 0 ? `${pendingCount} Pending` : 'Cloud Live') : `Local Queue (${pendingCount})`}
+          </span>
+        </div>
       </div>
 
       {/* 4 Financial Key Metrics (Sales, Cash, Card, Gross Profit) */}

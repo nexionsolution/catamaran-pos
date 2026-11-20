@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import logoImg from '../assets/logo.png'
 import { NavigationPage, PosSettings } from '../types'
 import { usePosSettings } from '../utils/settingsStore'
-import { useSoftwareUpdate } from '../utils/updateStore'
 import {
   IconCheck,
   IconClock,
@@ -23,8 +22,6 @@ export const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
   const [formData, setFormData] = useState<PosSettings>({ ...settings })
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [previewTab, setPreviewTab] = useState<'customer' | 'kitchen'>('customer')
-  const [updateState, { checkForUpdates, simulateUpdate, restoreBanner }] = useSoftwareUpdate()
-  const [checkingUpdate, setCheckingUpdate] = useState(false)
 
   // Keep form data in sync if settings load from backend
   React.useEffect(() => {
@@ -45,15 +42,6 @@ export const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
     }))
   }
 
-  const handleManualCheck = async (): Promise<void> => {
-    setCheckingUpdate(true)
-    try {
-      await checkForUpdates()
-      showToast('Checked for latest releases.')
-    } finally {
-      setCheckingUpdate(false)
-    }
-  }
 
   const handleSave = async (e?: React.FormEvent): Promise<void> => {
     if (e) e.preventDefault()
@@ -359,16 +347,16 @@ export const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
             </div>
           </section>
 
-          {/* Software Updates & System Version Card */}
+          {/* Web System Information Card */}
           <section className="settings-card" style={{ marginTop: '24px' }}>
             <div className="settings-card-header">
               <div className="settings-card-icon-wrap" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
-                <IconRotateCcw size={20} />
+                <IconClock size={20} />
               </div>
               <div>
-                <h3 className="settings-card-title">Software Updates & Version</h3>
+                <h3 className="settings-card-title">System & Platform Information</h3>
                 <p className="settings-card-subtitle">
-                  Terminal version management and official GitHub Release update monitor
+                  Catamaran POS multi-device cloud web application
                 </p>
               </div>
             </div>
@@ -383,14 +371,13 @@ export const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
                   borderRadius: '10px',
                   backgroundColor: '#f8fafc',
                   border: '1px solid #e2e8f0',
-                  marginBottom: '16px',
                   flexWrap: 'wrap',
                   gap: '12px'
                 }}
               >
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <strong style={{ fontSize: '14px', color: '#0f172a' }}>Current Installed Version:</strong>
+                    <strong style={{ fontSize: '14px', color: '#0f172a' }}>Platform Architecture:</strong>
                     <span
                       style={{
                         padding: '2px 8px',
@@ -401,88 +388,17 @@ export const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
                         fontWeight: 700
                       }}
                     >
-                      v{updateState.currentVersion} (Win-x64)
+                      v1.0.2 (Web)
                     </span>
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                    Official Channel: <strong>JayalathGUD/Catamaran-POS</strong> (GitHub Releases)
-                    {updateState.lastChecked && <span> · Last checked: {updateState.lastChecked}</span>}
+                    Runs in any browser · Cross-platform · Always on latest deployment
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={handleManualCheck}
-                    disabled={checkingUpdate || updateState.status === 'checking'}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '8px 14px',
-                      borderRadius: '8px',
-                      backgroundColor: '#0284c7',
-                      color: '#ffffff',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <IconRotateCcw size={14} className={checkingUpdate ? 'spin-animation' : ''} />
-                    <span>{checkingUpdate ? 'Checking...' : 'Check for Updates'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      simulateUpdate('1.1.0')
-                      restoreBanner()
-                      showToast('Simulated update notification displayed at top of screen!')
-                    }}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '8px 14px',
-                      borderRadius: '8px',
-                      backgroundColor: '#f1f5f9',
-                      color: '#334155',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      border: '1px solid #cbd5e1',
-                      cursor: 'pointer'
-                    }}
-                    title="Preview what the top update banner looks like"
-                  >
-                    <span>⚡ Test Update Banner</span>
-                  </button>
+                <div style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>
+                  ✅ Cloud Connected & Active
                 </div>
-              </div>
-
-              {/* Status Message */}
-              <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
-                {updateState.status === 'available' ? (
-                  <span style={{ color: '#0284c7', fontWeight: 600 }}>
-                    🚀 New update v{updateState.latestVersion} is available! A notification banner is shown at the top of the terminal.
-                  </span>
-                ) : updateState.status === 'downloading' ? (
-                  <span style={{ color: '#2563eb', fontWeight: 600 }}>
-                    📥 Downloading update ({updateState.percent ?? 0}%)...
-                  </span>
-                ) : updateState.status === 'downloaded' ? (
-                  <span style={{ color: '#059669', fontWeight: 700 }}>
-                    🎉 Update v{updateState.latestVersion} is downloaded and ready to install!
-                  </span>
-                ) : updateState.status === 'up-to-date' ? (
-                  <span style={{ color: '#16a34a' }}>
-                    ✅ Your terminal is running the latest software version (v{updateState.currentVersion}).
-                  </span>
-                ) : (
-                  <span>
-                    The application automatically monitors for new software releases on GitHub every 30 minutes. When a new update is released, a prominent notification banner will automatically appear at the very top of your terminal.
-                  </span>
-                )}
               </div>
             </div>
           </section>

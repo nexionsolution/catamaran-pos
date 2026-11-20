@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { ProfessionalReceipt } from './ProfessionalReceipt'
 import { formatLKR, formatLKRCompact } from '../data/demoData'
 import { playLowStockAlertSound } from '../utils/soundHelper'
+import { queueBillOffline, useNetworkSync } from '../utils/offlineSync'
 import {
   createBill,
   getBillById,
@@ -100,6 +101,7 @@ export const PosBilling: React.FC<PosBillingProps> = ({
   onClearExternalCartItem
 }) => {
   const { settings } = usePosSettings()
+  const { isOnline, pendingCount } = useNetworkSync()
   // Live Products from MongoDB Atlas with instant cached initialization
   const [products, setProducts] = useState<PosProduct[]>(getInitialProducts)
   const [inventoryMap, setInventoryMap] = useState<Map<string, number>>(getInitialInvMap)
@@ -1133,121 +1135,166 @@ export const PosBilling: React.FC<PosBillingProps> = ({
         finalChange = 0
       }
 
+      const billData = {
+        orderType,
+        paymentMethod: resolvedPaymentMethod,
+        customerName: customerReference.trim(),
+        items: cart.map((i) => ({
+          name: i.product.name,
+          quantity: i.quantity,
+          unitPrice: i.product.price,
+          total: i.product.price * i.quantity,
+          code: i.product.code
+        })),
+        subtotal,
+        discount: effectiveDiscount,
+        serviceCharge: serviceChargeAmount,
+        total: finalTotal,
+        amountTendered: finalTendered,
+        changeDue: finalChange,
+        splitCashAmount: splitCashAmt,
+        splitCardAmount: splitCardAmt,
+        cashier: settings.cashierName || 'Kasun P.'
+      }
+
+      const completeWithOfflineQueue = (offlinePayload: typeof billData) => {
+        const offlineBill = queueBillOffline(offlinePayload)
+        setSettledBillData({
+          billNumber: offlineBill.offlineBillNumber,
+          date: offlineBill.billData.date,
+          time: offlineBill.billData.time,
+          orderType: offlineBill.billData.orderType,
+          customerName: customerReference.trim() || undefined,
+          cashier: offlineBill.billData.cashier,
+          paymentMethod: offlineBill.billData.paymentMethod,
+          items: offlineBill.billData.items,
+          subtotal,
+          discount: effectiveDiscount,
+          serviceCharge: serviceChargeAmount,
+          total: finalTotal,
+          amountTendered: finalTendered,
+          changeDue: finalChange,
+          splitCashAmount: splitCashAmt,
+          splitCardAmount: splitCardAmt
+        })
+        setCompletedBillNumber(offlineBill.offlineBillNumber)
+        setReceiptModalInitialView('customer')
+        setShowReceiptModal(true)
+        showToast(
+          `⚡ Wi-Fi Offline: Bill #${offlineBill.offlineBillNumber} saved locally! 80mm Receipt ready to print. Will auto-sync when online.`
+        )
+      }
+
       if (activeBill) {
-        // First sync any newly added/modified items on the open tab
-        await updateOpenBillItems(activeBill.id, {
-          items: cart.map((i) => ({
-            name: i.product.name,
-            quantity: i.quantity,
-            unitPrice: i.product.price,
-            total: i.product.price * i.quantity,
-            code: i.product.code
-          })),
-          customerName: customerReference.trim(),
-          discount: effectiveDiscount,
-          serviceCharge: serviceChargeAmount,
-          cashier: settings.cashierName || 'Kasun P.'
-        })
+        try {
+          // First sync any newly added/modified items on the open tab
+          await updateOpenBillItems(activeBill.id, {
+            items: cart.map((i) => ({
+              name: i.product.name,
+              quantity: i.quantity,
+              unitPrice: i.product.price,
+              total: i.product.price * i.quantity,
+              code: i.product.code
+            })),
+            customerName: customerReference.trim(),
+            discount: effectiveDiscount,
+            serviceCharge: serviceChargeAmount,
+            cashier: settings.cashierName || 'Kasun P.'
+          })
 
-        // Settle & pay the bill atomically
-        const settled = await payBill(activeBill.id, {
-          paymentMethod: resolvedPaymentMethod,
-          discount: effectiveDiscount,
-          serviceCharge: serviceChargeAmount,
-          cashier: settings.cashierName || 'Kasun P.',
-          orderType,
-          amountTendered: finalTendered,
-          changeDue: finalChange,
-          splitCashAmount: splitCashAmt,
-          splitCardAmount: splitCardAmt
-        })
+          // Settle & pay the bill atomically
+          const settled = await payBill(activeBill.id, {
+            paymentMethod: resolvedPaymentMethod,
+            discount: effectiveDiscount,
+            serviceCharge: serviceChargeAmount,
+            cashier: settings.cashierName || 'Kasun P.',
+            orderType,
+            amountTendered: finalTendered,
+            changeDue: finalChange,
+            splitCashAmount: splitCashAmt,
+            splitCardAmount: splitCardAmt
+          })
 
-        setSettledBillData({
-          billNumber: settled.billNumber,
-          date: settled.date,
-          time: settled.time,
-          orderType: settled.orderType,
-          customerName: customerReference.trim() || undefined,
-          cashier: settled.cashier,
-          paymentMethod: settled.paymentMethod,
-          items: cart.map((i) => ({
-            name: i.product.name,
-            quantity: i.quantity,
-            unitPrice: i.product.price,
-            total: i.product.price * i.quantity,
-            code: i.product.code
-          })),
-          subtotal,
-          discount: effectiveDiscount,
-          serviceCharge: serviceChargeAmount,
-          total: finalTotal,
-          amountTendered: finalTendered,
-          changeDue: finalChange,
-          splitCashAmount: splitCashAmt,
-          splitCardAmount: splitCardAmt
-        })
-        setCompletedBillNumber(settled.billNumber)
-        setReceiptModalInitialView('customer')
-        setShowReceiptModal(true)
-        showToast(`Bill #${settled.billNumber} settled and closed successfully!`)
-        setActiveBill(null)
-        onClearActiveOpenBill?.()
-        onOpenBillsChanged?.()
-        getOpenBills()
-          .then((b) => setOpenBillsCount(b.length))
-          .catch(() => { })
-      } else {
-        const billData = {
-          orderType,
-          paymentMethod: resolvedPaymentMethod,
-          customerName: customerReference.trim(),
-          items: cart.map((i) => ({
-            name: i.product.name,
-            quantity: i.quantity,
-            unitPrice: i.product.price,
-            total: i.product.price * i.quantity,
-            code: i.product.code
-          })),
-          subtotal,
-          discount: effectiveDiscount,
-          serviceCharge: serviceChargeAmount,
-          total: finalTotal,
-          amountTendered: finalTendered,
-          changeDue: finalChange,
-          splitCashAmount: splitCashAmt,
-          splitCardAmount: splitCardAmt,
-          cashier: settings.cashierName || 'Kasun P.'
+          setSettledBillData({
+            billNumber: settled.billNumber,
+            date: settled.date,
+            time: settled.time,
+            orderType: settled.orderType,
+            customerName: customerReference.trim() || undefined,
+            cashier: settled.cashier,
+            paymentMethod: settled.paymentMethod,
+            items: cart.map((i) => ({
+              name: i.product.name,
+              quantity: i.quantity,
+              unitPrice: i.product.price,
+              total: i.product.price * i.quantity,
+              code: i.product.code
+            })),
+            subtotal,
+            discount: effectiveDiscount,
+            serviceCharge: serviceChargeAmount,
+            total: finalTotal,
+            amountTendered: finalTendered,
+            changeDue: finalChange,
+            splitCashAmount: splitCashAmt,
+            splitCardAmount: splitCardAmt
+          })
+          setCompletedBillNumber(settled.billNumber)
+          setReceiptModalInitialView('customer')
+          setShowReceiptModal(true)
+          showToast(`Bill #${settled.billNumber} settled and closed successfully!`)
+          setActiveBill(null)
+          onClearActiveOpenBill?.()
+          onOpenBillsChanged?.()
+          getOpenBills()
+            .then((b) => setOpenBillsCount(b.length))
+            .catch(() => { })
+        } catch (activeErr) {
+          console.warn('Network issue settling active bill, queuing offline:', activeErr)
+          completeWithOfflineQueue(billData)
+          setActiveBill(null)
+          onClearActiveOpenBill?.()
+          onOpenBillsChanged?.()
         }
-
-        const savedBill = await createBill(billData)
-        setSettledBillData({
-          billNumber: savedBill.billNumber,
-          date: savedBill.date,
-          time: savedBill.time,
-          orderType: savedBill.orderType,
-          customerName: customerReference.trim() || undefined,
-          cashier: savedBill.cashier,
-          paymentMethod: savedBill.paymentMethod,
-          items: cart.map((i) => ({
-            name: i.product.name,
-            quantity: i.quantity,
-            unitPrice: i.product.price,
-            total: i.product.price * i.quantity,
-            code: i.product.code
-          })),
-          subtotal,
-          discount: effectiveDiscount,
-          serviceCharge: serviceChargeAmount,
-          total: finalTotal,
-          amountTendered: finalTendered,
-          changeDue: finalChange,
-          splitCashAmount: splitCashAmt,
-          splitCardAmount: splitCardAmt
-        })
-        setCompletedBillNumber(savedBill.billNumber)
-        setReceiptModalInitialView('customer')
-        setShowReceiptModal(true)
-        showToast(`Bill #${savedBill.billNumber} settled and saved to database!`)
+      } else {
+        if (!navigator.onLine) {
+          completeWithOfflineQueue(billData)
+        } else {
+          try {
+            const savedBill = await createBill(billData)
+            setSettledBillData({
+              billNumber: savedBill.billNumber,
+              date: savedBill.date,
+              time: savedBill.time,
+              orderType: savedBill.orderType,
+              customerName: customerReference.trim() || undefined,
+              cashier: savedBill.cashier,
+              paymentMethod: savedBill.paymentMethod,
+              items: cart.map((i) => ({
+                name: i.product.name,
+                quantity: i.quantity,
+                unitPrice: i.product.price,
+                total: i.product.price * i.quantity,
+                code: i.product.code
+              })),
+              subtotal,
+              discount: effectiveDiscount,
+              serviceCharge: serviceChargeAmount,
+              total: finalTotal,
+              amountTendered: finalTendered,
+              changeDue: finalChange,
+              splitCashAmount: splitCashAmt,
+              splitCardAmount: splitCardAmt
+            })
+            setCompletedBillNumber(savedBill.billNumber)
+            setReceiptModalInitialView('customer')
+            setShowReceiptModal(true)
+            showToast(`Bill #${savedBill.billNumber} settled and saved to database!`)
+          } catch (netErr: unknown) {
+            console.warn('createBill failed due to network error, queuing offline:', netErr)
+            completeWithOfflineQueue(billData)
+          }
+        }
       }
 
       // Refresh menu and live inventory stock immediately
@@ -2281,6 +2328,29 @@ export const PosBilling: React.FC<PosBillingProps> = ({
                     <div className="pro-change-amount">
                       {formatLKR(Math.abs(tenderedAmount - finalTotal))}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Offline Cashiering Warning Notice */}
+              {!isOnline && (
+                <div
+                  style={{
+                    backgroundColor: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    marginBottom: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '11.5px',
+                    color: '#92400e'
+                  }}
+                >
+                  <span style={{ fontSize: '14px' }}>⚡</span>
+                  <div>
+                    <strong>Offline Cashiering Active:</strong> Wi-Fi/Internet disconnected. Bills are safely queued in local storage &amp; 80mm receipts print normally. They will auto-sync to MongoDB Atlas once reconnected.
                   </div>
                 </div>
               )}

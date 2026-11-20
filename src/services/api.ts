@@ -21,7 +21,7 @@ import {
   PosSettings
 } from '../types'
 
-const API_ROOT = 'http://127.0.0.1:5000/api'
+const API_ROOT = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
 
 // Helper for mapping MongoDB _id to frontend id
 export function mapId<T extends { _id?: string; id?: string }>(item: T): T & { id: string } {

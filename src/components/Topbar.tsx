@@ -1,8 +1,8 @@
 import { usePosSettings } from '../utils/settingsStore'
-import { useSoftwareUpdate } from '../utils/updateStore'
 import React, { useEffect, useRef, useState } from 'react'
 import { InventoryItem, NavigationPage } from '../types'
-import { IconAlertTriangle, IconChevronRight, IconClock, IconInfo, IconX } from './Icons'
+import { IconAlertTriangle, IconChevronRight, IconClock, IconInfo, IconRotateCcw, IconX } from './Icons'
+import { useNetworkSync } from '../utils/offlineSync'
 
 interface TopbarProps {
   currentPage: NavigationPage
@@ -13,7 +13,7 @@ interface TopbarProps {
 
 export const Topbar: React.FC<TopbarProps> = ({ currentPage, lowStockItems = [], onNavigate }) => {
   const { settings } = usePosSettings()
-  const [updateState, { restartAndInstall, restoreBanner }] = useSoftwareUpdate()
+  const { isOnline, isSyncing, pendingCount, syncNow } = useNetworkSync()
   const [showStockDropdown, setShowStockDropdown] = useState<boolean>(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -52,87 +52,60 @@ export const Topbar: React.FC<TopbarProps> = ({ currentPage, lowStockItems = [],
       </div>
 
       <div className="topbar-right">
-        {/* Software Update Indicators & Quick Restore Buttons */}
-        {updateState.status === 'downloading' && (
-          <div
-            className="topbar-update-banner"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              backgroundColor: '#eff6ff',
-              border: '1px solid #bfdbfe',
-              color: '#1d4ed8',
-              fontSize: '11px',
-              fontWeight: 600
-            }}
-          >
-            <span className="demo-badge-dot" style={{ backgroundColor: '#3b82f6' }} />
-            <span>Downloading Update: {updateState.percent ?? 0}%</span>
-          </div>
-        )}
-
-        {updateState.status === 'downloaded' && (
-          <button
-            type="button"
-            className="topbar-update-btn"
-            onClick={restartAndInstall}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '5px 13px',
-              borderRadius: '20px',
-              backgroundColor: '#059669',
-              border: '1px solid #047857',
-              color: '#ffffff',
-              fontSize: '11px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(5, 150, 105, 0.4)'
-            }}
-            title="Click to restart and install update"
-          >
-            <span>🚀 Update Ready! Restart Now</span>
-          </button>
-        )}
-
-        {updateState.isDismissed && updateState.status === 'available' && (
-          <button
-            type="button"
-            className="topbar-update-btn"
-            onClick={restoreBanner}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '5px 13px',
-              borderRadius: '20px',
-              backgroundColor: '#0284c7',
-              border: '1px solid #0369a1',
-              color: '#ffffff',
-              fontSize: '11px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.4)'
-            }}
-            title="Click to view update details and install"
-          >
-            <span>⚡ Update v{updateState.latestVersion || 'New'} Available!</span>
-          </button>
-        )}
-
-        {/* Live System Status Badge */}
+        {/* Live System & Network Sync Status Badge */}
         <div
           className="demo-badge-indicator"
-          style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534' }}
-          title="Connected to Live MongoDB Atlas Database"
+          style={{
+            backgroundColor: isSyncing
+              ? '#eff6ff'
+              : isOnline
+              ? '#f0fdf4'
+              : '#fffbeb',
+            borderColor: isSyncing
+              ? '#bfdbfe'
+              : isOnline
+              ? '#bbf7d0'
+              : '#fde68a',
+            color: isSyncing
+              ? '#1d4ed8'
+              : isOnline
+              ? '#166534'
+              : '#b45309',
+            cursor: pendingCount > 0 ? 'pointer' : 'default',
+            transition: 'all 0.2s ease'
+          }}
+          onClick={() => {
+            if (pendingCount > 0 && !isSyncing) {
+              syncNow()
+            }
+          }}
+          title={
+            isSyncing
+              ? 'Syncing offline bills to MongoDB Atlas...'
+              : isOnline
+              ? (pendingCount > 0
+                ? `${pendingCount} offline bill(s) pending sync. Click to sync now!`
+                : 'Connected to Live MongoDB Atlas Database')
+              : 'Wi-Fi/Internet Offline: Working in Local Mode. Bills will auto-sync when reconnected.'
+          }
         >
-          <span className="demo-badge-dot" style={{ backgroundColor: '#10b981' }} />
-          <span className="demo-badge-text" style={{ color: '#166534', fontWeight: 600 }}>
-            LIVE SYSTEM
+          <span
+            className="demo-badge-dot"
+            style={{
+              backgroundColor: isSyncing
+                ? '#3b82f6'
+                : isOnline
+                ? '#10b981'
+                : '#f59e0b',
+              animation: isSyncing || !isOnline ? 'pulse 1.5s infinite' : undefined
+            }}
+          />
+          <span className="demo-badge-text" style={{ fontWeight: 600 }}>
+            {isSyncing
+              ? `SYNCING (${pendingCount})`
+              : isOnline
+              ? (pendingCount > 0 ? `ONLINE · ${pendingCount} PENDING` : 'LIVE CLOUD')
+              : `OFFLINE (${pendingCount} Queued)`}
           </span>
         </div>
 

@@ -79,7 +79,7 @@ interface ApiMenuItem {
   updatedAt?: string
 }
 
-const API_BASE_URL = 'http://127.0.0.1:5000/api/menu'
+const API_BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/menu` : '/api/menu'
 
 function mapApiToMenuItem(item: ApiMenuItem): MenuItem {
   return {
