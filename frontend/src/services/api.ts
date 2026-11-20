@@ -21,7 +21,10 @@ import {
   PosSettings
 } from '../types'
 
-const API_ROOT = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
+const rawApiUrl = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim().replace(/\/+$/, '') : ''
+const API_ROOT = rawApiUrl
+  ? (rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`)
+  : '/api'
 
 // Helper for mapping MongoDB _id to frontend id
 export function mapId<T extends { _id?: string; id?: string }>(item: T): T & { id: string } {
