@@ -1796,9 +1796,10 @@ app.post('/api/bills/:id/payment', async (req, res) => {
         throw err;
       }
 
-      // Idempotency check
-      if (idempotencyKey) {
-        const existingPay = await Payment.findOne({ idempotencyKey }, null, sessionOpt);
+      // Idempotency check with sanitized literal query to prevent NoSQL injection
+      const safeIdempotencyKey = typeof idempotencyKey === 'string' && idempotencyKey.trim() ? String(idempotencyKey).trim() : null;
+      if (safeIdempotencyKey) {
+        const existingPay = await Payment.findOne({ idempotencyKey: { $eq: safeIdempotencyKey } }, null, sessionOpt);
         if (existingPay) {
           return { bill, payment: existingPay, alreadyProcessed: true };
         }
@@ -1829,7 +1830,7 @@ app.post('/api/bills/:id/payment', async (req, res) => {
             paymentTimestamp: slDate.timestamp,
             cashier: cashier || 'Staff',
             notes: notes || 'Customer credit settlement payment',
-            ...(idempotencyKey ? { idempotencyKey } : {})
+            ...(safeIdempotencyKey ? { idempotencyKey: safeIdempotencyKey } : {})
           }
         ],
         sessionOpt
@@ -2564,9 +2565,10 @@ app.post('/api/rentals/:id/payment', async (req, res) => {
         throw err;
       }
 
-      // Idempotency check
-      if (idempotencyKey) {
-        const existingPay = await Payment.findOne({ idempotencyKey }, null, sessionOpt);
+      // Idempotency check with sanitized literal query to prevent NoSQL injection
+      const safeIdempotencyKey = typeof idempotencyKey === 'string' && idempotencyKey.trim() ? String(idempotencyKey).trim() : null;
+      if (safeIdempotencyKey) {
+        const existingPay = await Payment.findOne({ idempotencyKey: { $eq: safeIdempotencyKey } }, null, sessionOpt);
         if (existingPay) {
           return { rental, payment: existingPay, alreadyProcessed: true };
         }
@@ -2598,7 +2600,7 @@ app.post('/api/rentals/:id/payment', async (req, res) => {
             paymentTimestamp: slNow.timestamp,
             cashier: cashier || 'Staff',
             notes: notes || 'Rental deferred payment',
-            ...(idempotencyKey ? { idempotencyKey } : {})
+            ...(safeIdempotencyKey ? { idempotencyKey: safeIdempotencyKey } : {})
           }
         ],
         sessionOpt
@@ -3682,8 +3684,9 @@ app.post('/api/credit/:sourceType/:sourceId/pay', async (req, res) => {
       if (!pAmt || pAmt <= 0) return res.status(400).json({ message: 'Payment amount must be greater than zero' });
       if (pAmt > currentBalance) return res.status(400).json({ message: `Payment amount exceeds balance (Rs. ${currentBalance})` });
 
-      if (req.body.idempotencyKey) {
-        const existingPay = await Payment.findOne({ idempotencyKey: req.body.idempotencyKey });
+      const safeBillIdempotencyKey = typeof req.body.idempotencyKey === 'string' && req.body.idempotencyKey.trim() ? String(req.body.idempotencyKey).trim() : null;
+      if (safeBillIdempotencyKey) {
+        const existingPay = await Payment.findOne({ idempotencyKey: { $eq: safeBillIdempotencyKey } });
         if (existingPay) return res.json({ bill, payment: existingPay, alreadyProcessed: true });
       }
 
@@ -3708,7 +3711,7 @@ app.post('/api/credit/:sourceType/:sourceId/pay', async (req, res) => {
         paymentTimestamp: slDate.timestamp,
         cashier: req.body.cashier || 'Staff',
         notes: req.body.notes || 'Credit settlement payment',
-        ...(req.body.idempotencyKey ? { idempotencyKey: req.body.idempotencyKey } : {})
+        ...(safeBillIdempotencyKey ? { idempotencyKey: safeBillIdempotencyKey } : {})
       });
 
       return res.json({ bill, payment: paymentDoc });
@@ -3723,8 +3726,9 @@ app.post('/api/credit/:sourceType/:sourceId/pay', async (req, res) => {
       if (!pAmt || pAmt <= 0) return res.status(400).json({ message: 'Payment amount must be greater than zero' });
       if (pAmt > currentBalance) return res.status(400).json({ message: `Payment amount exceeds balance (Rs. ${currentBalance})` });
 
-      if (req.body.idempotencyKey) {
-        const existingPay = await Payment.findOne({ idempotencyKey: req.body.idempotencyKey });
+      const safeRentalIdempotencyKey = typeof req.body.idempotencyKey === 'string' && req.body.idempotencyKey.trim() ? String(req.body.idempotencyKey).trim() : null;
+      if (safeRentalIdempotencyKey) {
+        const existingPay = await Payment.findOne({ idempotencyKey: { $eq: safeRentalIdempotencyKey } });
         if (existingPay) return res.json({ rental, payment: existingPay, alreadyProcessed: true });
       }
 
@@ -3750,7 +3754,7 @@ app.post('/api/credit/:sourceType/:sourceId/pay', async (req, res) => {
         paymentTimestamp: slDate.timestamp,
         cashier: req.body.cashier || 'Staff',
         notes: req.body.notes || 'Rental credit payment',
-        ...(req.body.idempotencyKey ? { idempotencyKey: req.body.idempotencyKey } : {})
+        ...(safeRentalIdempotencyKey ? { idempotencyKey: safeRentalIdempotencyKey } : {})
       });
 
       return res.json({ rental, payment: paymentDoc });
@@ -4795,9 +4799,10 @@ async function handleLessonPayment(req, res) {
           throw err;
         }
 
-        // Idempotency check
-        if (idempotencyKey) {
-          const existingPay = await Payment.findOne({ idempotencyKey }).session(session);
+        // Idempotency check with sanitized literal query to prevent NoSQL injection
+        const safeLessonIdempotencyKey = typeof idempotencyKey === 'string' && idempotencyKey.trim() ? String(idempotencyKey).trim() : null;
+        if (safeLessonIdempotencyKey) {
+          const existingPay = await Payment.findOne({ idempotencyKey: { $eq: safeLessonIdempotencyKey } }).session(session);
           if (existingPay) {
             result = { lesson, payment: existingPay, alreadyProcessed: true };
             return;
@@ -4833,7 +4838,7 @@ async function handleLessonPayment(req, res) {
               paymentTimestamp: slNow.timestamp,
               cashier: cashier || 'Cashier',
               notes: notes || 'Lesson payment',
-              ...(idempotencyKey ? { idempotencyKey } : {})
+              ...(safeLessonIdempotencyKey ? { idempotencyKey: safeLessonIdempotencyKey } : {})
             }
           ],
           { session }
@@ -4861,19 +4866,23 @@ app.patch('/api/lessons/:id/payment', handleLessonPayment);
 // ============================================================
 // SERVER INITIALIZATION
 // ============================================================
-const DEFAULT_MONGODB_URI =
-  'mongodb+srv://catamaran_app_user:CatamaranPosSystem@cluster0.xopp0.mongodb.net/catamaran_pos?retryWrites=true&w=majority';
-
 async function startServer() {
   try {
-    const mongoUri = process.env.MONGODB_URI || DEFAULT_MONGODB_URI;
+    const mongoUri = process.env.MONGODB_URI;
+    if (!mongoUri) {
+      console.error('CRITICAL: MONGODB_URI is not defined in environment variables or .env file!');
+    }
 
     try {
-      await mongoose.connect(mongoUri, {
-        serverSelectionTimeoutMS: 5000,
-        retryWrites: false
-      });
-      console.log('MongoDB connected successfully to Atlas database');
+      if (mongoUri) {
+        await mongoose.connect(mongoUri, {
+          serverSelectionTimeoutMS: 5000,
+          retryWrites: false
+        });
+        console.log('MongoDB connected successfully to database');
+      } else {
+        throw new Error('MONGODB_URI environment variable is missing');
+      }
     } catch (primaryErr) {
       console.warn(
         'Primary MongoDB connection failed (' +

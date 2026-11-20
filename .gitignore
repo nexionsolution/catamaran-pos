@@ -26,4 +26,6 @@ backend/.env
 # Electron release builds
 release/
 *.exe
+*.bat
+*.cmd
 dist-electron/
