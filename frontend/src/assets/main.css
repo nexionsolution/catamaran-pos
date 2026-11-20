@@ -10248,6 +10248,12 @@ tr:hover .table-actions-cluster {
   display: block;
 }
 
+.thermal-cutter-feed-spacer {
+  height: 8px;
+  width: 100%;
+  display: block;
+}
+
 /* Modal Actions Buttons (Clean Two-Tier Layout) */
 .pro-receipt-actions {
   display: flex !important;
@@ -10659,6 +10665,7 @@ tr:hover .table-actions-cluster {
     background: transparent !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    font-weight: 800 !important;
   }
 
   #thermal-print-target {
@@ -10669,8 +10676,8 @@ tr:hover .table-actions-cluster {
     max-width: 76mm !important;
     min-width: 76mm !important;
     margin: 0 !important;
-    padding: 2mm 2mm 12mm 2mm !important;
-    /* Bottom 12mm space for paper cutter */
+    padding: 2mm 2mm 30mm 2mm !important;
+    /* Bottom 30mm space for paper cutter */
     box-sizing: border-box !important;
     border: none !important;
     border-radius: 0 !important;
@@ -10679,6 +10686,7 @@ tr:hover .table-actions-cluster {
     color: #000000 !important;
     font-family: 'Courier New', Courier, monospace !important;
     font-size: 8.5pt !important;
+    font-weight: 800 !important;
     line-height: 1.35 !important;
     word-wrap: break-word !important;
     page-break-inside: avoid !important;
@@ -11001,13 +11009,25 @@ tr:hover .table-actions-cluster {
     margin-top: 2mm !important;
     padding-top: 1.5mm !important;
     border-top: 1px dashed #000000 !important;
-    font-size: 6.5pt !important;
+    font-size: 7.5pt !important;
     font-weight: 900 !important;
     color: #000000 !important;
     letter-spacing: 0.6px !important;
     text-transform: uppercase !important;
     text-align: center !important;
     display: block !important;
+    margin-bottom: 25mm !important; /* Pushes blank paper past auto-cutter */
+  }
+
+  #thermal-print-target .thermal-cutter-feed-spacer {
+    display: block !important;
+    height: 28mm !important;
+    min-height: 28mm !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 28mm !important;
+    visibility: visible !important;
   }
 
   /* 10. KOT Thermal Print Styles */

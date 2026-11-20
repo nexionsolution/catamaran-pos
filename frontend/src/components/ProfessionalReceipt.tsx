@@ -336,6 +336,11 @@ export const ProfessionalReceipt: React.FC<ProfessionalReceiptProps> = ({
                   <div className="pro-software-credit">
                     {displayCredit}
                   </div>
+
+                  {/* Auto-Cutter Clearance Feed Space (ensures paper feeds past cutter blade before cutting) */}
+                  <div className="thermal-cutter-feed-spacer" aria-hidden="true">
+                    &nbsp;
+                  </div>
                 </div>
               </div>
             ) : (
@@ -546,6 +551,11 @@ export const ProfessionalReceipt: React.FC<ProfessionalReceiptProps> = ({
                   {/* Software Credit */}
                   <div className="pro-software-credit">
                     {displayCredit}
+                  </div>
+
+                  {/* Auto-Cutter Clearance Feed Space (ensures paper feeds past cutter blade before cutting) */}
+                  <div className="thermal-cutter-feed-spacer" aria-hidden="true">
+                    &nbsp;
                   </div>
                 </div>
               </div>

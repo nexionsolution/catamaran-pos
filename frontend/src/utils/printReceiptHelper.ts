@@ -59,6 +59,7 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
             padding: 0;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            font-weight: 800 !important;
           }
           html, body {
             width: 80mm !important;
@@ -69,6 +70,8 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
             background: #ffffff !important;
             color: #000000 !important;
             font-family: 'Courier New', Courier, monospace !important;
+            font-weight: 800 !important;
+            -webkit-font-smoothing: antialiased !important;
             overflow: visible !important;
           }
           #thermal-print-target,
@@ -79,13 +82,14 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
             max-width: 76mm !important;
             min-width: 76mm !important;
             margin: 0 auto !important;
-            padding: 2mm 2mm 10mm 2mm !important;
+            padding: 2mm 2mm 30mm 2mm !important; /* 30mm bottom clearance ensures auto-cutter cuts well below the software credit */
             box-sizing: border-box !important;
             background: #ffffff !important;
             color: #000000 !important;
             border: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
+            font-weight: 800 !important;
           }
           .thermal-print-wrapper * {
             visibility: visible !important;
@@ -160,11 +164,12 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
           }
           .t-meta-k {
             font-size: 8.5pt !important;
-            font-weight: 700 !important;
+            font-weight: 800 !important;
             color: #000000 !important;
           }
           .t-meta-v {
             font-size: 8.5pt !important;
+            font-weight: 800 !important;
             color: #000000 !important;
           }
           .t-bill-no {
@@ -173,8 +178,8 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
           }
           .t-badge-pill {
             font-size: 8pt !important;
-            font-weight: 800 !important;
-            border: 1px solid #000000 !important;
+            font-weight: 900 !important;
+            border: 1.5px solid #000000 !important;
             padding: 0 4px !important;
             border-radius: 3px !important;
           }
@@ -183,10 +188,11 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
             border-collapse: collapse !important;
             margin: 2mm 0 !important;
             table-layout: fixed !important;
+            font-weight: 800 !important;
           }
           .pro-items-table th {
             font-size: 8.5pt !important;
-            font-weight: 800 !important;
+            font-weight: 900 !important;
             border-bottom: 1.5px dashed #000000 !important;
             padding: 1.5mm 0 !important;
             color: #000000 !important;
@@ -194,6 +200,7 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
           }
           .pro-items-table td {
             font-size: 8.5pt !important;
+            font-weight: 800 !important;
             padding: 1.5mm 0 !important;
             vertical-align: top !important;
             color: #000000 !important;
@@ -203,33 +210,37 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
             width: 48% !important;
             word-break: break-word !important;
             text-align: left !important;
+            font-weight: 800 !important;
           }
           .t-th-qty, .t-td-qty {
             width: 14% !important;
             text-align: center !important;
-            font-weight: 700 !important;
+            font-weight: 800 !important;
           }
           .t-th-rate, .t-td-rate {
             width: 19% !important;
             text-align: right !important;
+            font-weight: 800 !important;
           }
           .t-th-amt, .t-td-amt {
             width: 19% !important;
             text-align: right !important;
-            font-weight: 800 !important;
+            font-weight: 900 !important;
           }
           .t-item-name {
-            font-weight: 800 !important;
+            font-weight: 900 !important;
             color: #000000 !important;
             word-break: break-word !important;
             line-height: 1.2 !important;
           }
           .t-item-code {
-            font-size: 7pt !important;
+            font-size: 7.5pt !important;
+            font-weight: 800 !important;
             color: #000000 !important;
           }
           .t-summary-block {
             font-size: 8.5pt !important;
+            font-weight: 800 !important;
             line-height: 1.35 !important;
             width: 100% !important;
             display: flex !important;
@@ -258,21 +269,23 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
             flex-direction: column !important;
             gap: 1.2mm !important;
             background: transparent !important;
+            font-weight: 800 !important;
           }
           .t-tender-row {
             display: flex !important;
             justify-content: space-between !important;
             align-items: baseline !important;
             font-size: 8.5pt !important;
+            font-weight: 800 !important;
             color: #000000 !important;
           }
           .t-tender-lbl {
             font-size: 8pt !important;
-            font-weight: 700 !important;
+            font-weight: 800 !important;
           }
           .t-tender-val {
             font-size: 9pt !important;
-            font-weight: 800 !important;
+            font-weight: 900 !important;
           }
           .t-change-val {
             font-size: 11pt !important;
@@ -280,6 +293,7 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
           }
           .pro-receipt-footer {
             font-size: 8pt !important;
+            font-weight: 800 !important;
             line-height: 1.35 !important;
             color: #000000 !important;
             text-align: center !important;
@@ -290,13 +304,34 @@ export function printThermalReceipt(elementId: string = 'thermal-print-target'):
             margin-top: 2.5mm !important;
             width: 100% !important;
           }
+          .pro-item-count {
+            font-weight: 800 !important;
+          }
+          .pro-thankyou-msg {
+            font-weight: 900 !important;
+          }
+          .pro-vibe, .pro-web, .pro-visit-again, .t-paper-cut {
+            font-weight: 800 !important;
+          }
           .pro-software-credit {
-            font-size: 7.5pt !important;
+            font-size: 8pt !important;
             letter-spacing: 0.05em !important;
             color: #000000 !important;
             text-align: center !important;
-            font-weight: 700 !important;
-            margin-top: 2mm !important;
+            font-weight: 900 !important;
+            margin-top: 2.5mm !important;
+            margin-bottom: 25mm !important; /* 25mm paper advance so cutter cuts cleanly below credit line */
+            display: block !important;
+          }
+          .thermal-cutter-feed-spacer {
+            display: block !important;
+            height: 28mm !important;
+            min-height: 28mm !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 28mm !important;
+            visibility: visible !important;
           }
         </style>
       </head>
