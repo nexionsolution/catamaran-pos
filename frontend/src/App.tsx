@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './assets/main.css'
+import { LoginPage } from './components/LoginPage'
 import { BillHistory } from './components/BillHistory'
 import { Dashboard } from './components/Dashboard'
 import { Inventory } from './components/Inventory'
@@ -18,6 +19,9 @@ import { getInventoryItems, getOpenBills, getRentals, getSurfboards } from './se
 import { ActiveRental, CompletedRental, InventoryItem, NavigationPage, PosCartItem, Surfboard } from './types'
 
 function App(): React.JSX.Element {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return !!localStorage.getItem('catamaran_auth_token')
+  })
   const [currentPage, setCurrentPage] = useState<NavigationPage>('Dashboard')
 
   // Live shared state for surfboard fleet and rental transactions
@@ -112,6 +116,20 @@ function App(): React.JSX.Element {
     Settings: 'Terminal hardware settings, receipt printer layout, and local POS configuration.'
   }
 
+  const handleLoginSuccess = (): void => {
+    setIsAuthenticated(true)
+  }
+
+  const handleLogout = (): void => {
+    localStorage.removeItem('catamaran_auth_token')
+    localStorage.removeItem('catamaran_auth_user')
+    setIsAuthenticated(false)
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />
+  }
+
   return (
     <div className="app-shell">
       {/* Fixed Left Sidebar with Brand Mark and Exact Nav Items */}
@@ -135,6 +153,7 @@ function App(): React.JSX.Element {
           currentPage={currentPage}
           lowStockItems={lowStockItems}
           onNavigate={setCurrentPage}
+          onLogout={handleLogout}
         />
 
         {/* Dynamic View Rendering */}

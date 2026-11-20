@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import {
   ActiveRental,
   CompletedRental,
@@ -78,19 +78,19 @@ function formatBillResponse(b: any): HistoryBill {
     cashier: b.cashier || 'Kasun P.',
     items: Array.isArray(b.items)
       ? b.items.map((i: any, idx: number) => ({
-          id: String(i._id || i.id || `item-${idx}`),
-          name: String(i.name || ''),
-          quantity: Number(i.quantity || 1),
-          unitPrice: Number(i.unitPrice || 0),
-          total: Number(i.total || 0),
-          code: i.code ? String(i.code) : undefined,
-          duration: i.duration ? String(i.duration) : undefined,
-          startTime: i.startTime ? String(i.startTime) : undefined,
-          endTime: i.endTime ? String(i.endTime) : undefined,
-          isCustomPrice: Boolean(i.isCustomPrice),
-          customPrice: i.customPrice !== undefined && i.customPrice !== null ? Number(i.customPrice) : undefined,
-          addedAt: i.addedAt ? String(i.addedAt) : undefined
-        }))
+        id: String(i._id || i.id || `item-${idx}`),
+        name: String(i.name || ''),
+        quantity: Number(i.quantity || 1),
+        unitPrice: Number(i.unitPrice || 0),
+        total: Number(i.total || 0),
+        code: i.code ? String(i.code) : undefined,
+        duration: i.duration ? String(i.duration) : undefined,
+        startTime: i.startTime ? String(i.startTime) : undefined,
+        endTime: i.endTime ? String(i.endTime) : undefined,
+        isCustomPrice: Boolean(i.isCustomPrice),
+        customPrice: i.customPrice !== undefined && i.customPrice !== null ? Number(i.customPrice) : undefined,
+        addedAt: i.addedAt ? String(i.addedAt) : undefined
+      }))
       : [],
     refundReason: b.refundReason || undefined,
     refundedAt: b.refundedAt || undefined,
@@ -140,18 +140,18 @@ export async function createBill(billData: {
   saleType?: string
   paymentMethod: string
   items: Array<{
-      name: string
-      quantity: number
-      unitPrice: number
-      total: number
-      code?: string
-      duration?: string
-      startTime?: string
-      endTime?: string
-      isCustomPrice?: boolean
-      customPrice?: number
-      addedAt?: string
-    }>
+    name: string
+    quantity: number
+    unitPrice: number
+    total: number
+    code?: string
+    duration?: string
+    startTime?: string
+    endTime?: string
+    isCustomPrice?: boolean
+    customPrice?: number
+    addedAt?: string
+  }>
   subtotal: number
   discount: number
   serviceCharge: number
@@ -992,10 +992,10 @@ function mapSurfLesson(item: any): SurfLesson {
     level: item.level || 'All Levels',
     assignedBoards: Array.isArray(item.assignedBoards)
       ? item.assignedBoards.map((b: any) => ({
-          boardId: String(b.boardId || ''),
-          boardName: String(b.boardName || ''),
-          boardCategory: b.boardCategory ? String(b.boardCategory) : undefined
-        }))
+        boardId: String(b.boardId || ''),
+        boardName: String(b.boardName || ''),
+        boardCategory: b.boardCategory ? String(b.boardCategory) : undefined
+      }))
       : [],
     status: item.status || 'In Progress',
     completedAt: item.completedAt ? String(item.completedAt) : undefined,
@@ -1162,4 +1162,30 @@ export async function updateSettings(settings: Partial<PosSettings>): Promise<Po
     throw new Error(err.message || `HTTP ${res.status}: Failed to update settings`)
   }
   return res.json()
+}
+
+// ============================================================
+// AUTHENTICATION API
+// ============================================================
+export interface AuthResponse {
+  success: boolean
+  token: string
+  user: {
+    email: string
+    role: string
+    name: string
+  }
+}
+
+export async function loginUser(email: string, password: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_ROOT}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(data.message || `HTTP ${res.status}: Invalid credentials`)
+  }
+  return data
 }

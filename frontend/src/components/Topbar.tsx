@@ -1,7 +1,7 @@
 import { usePosSettings } from '../utils/settingsStore'
 import React, { useEffect, useRef, useState } from 'react'
 import { InventoryItem, NavigationPage } from '../types'
-import { IconAlertTriangle, IconChevronRight, IconClock, IconInfo, IconRotateCcw, IconX } from './Icons'
+import { IconAlertTriangle, IconChevronRight, IconClock, IconInfo, IconPower, IconRotateCcw, IconX } from './Icons'
 import { useNetworkSync } from '../utils/offlineSync'
 
 interface TopbarProps {
@@ -9,9 +9,15 @@ interface TopbarProps {
   onResetDemo?: () => void
   lowStockItems?: InventoryItem[]
   onNavigate?: (page: NavigationPage) => void
+  onLogout?: () => void
 }
 
-export const Topbar: React.FC<TopbarProps> = ({ currentPage, lowStockItems = [], onNavigate }) => {
+export const Topbar: React.FC<TopbarProps> = ({
+  currentPage,
+  lowStockItems = [],
+  onNavigate,
+  onLogout
+}) => {
   const { settings } = usePosSettings()
   const { isOnline, isSyncing, pendingCount, syncNow } = useNetworkSync()
   const [showStockDropdown, setShowStockDropdown] = useState<boolean>(false)
@@ -242,6 +248,21 @@ export const Topbar: React.FC<TopbarProps> = ({ currentPage, lowStockItems = [],
           <IconInfo size={14} />
           <span>Live POS</span>
         </div>
+
+        {onLogout && (
+          <>
+            <div className="topbar-divider" />
+            <button
+              type="button"
+              className="topbar-lock-btn"
+              title="Lock Terminal & Log Out"
+              onClick={onLogout}
+            >
+              <IconPower size={14} />
+              <span>Lock Terminal</span>
+            </button>
+          </>
+        )}
       </div>
     </header>
   )

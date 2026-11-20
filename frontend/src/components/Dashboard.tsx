@@ -1,5 +1,6 @@
 import logoImg from '../assets/logo.png'
 import React, { useEffect, useMemo, useState } from 'react'
+import { ProfessionalReceipt } from './ProfessionalReceipt'
 import { formatLKR } from '../data/demoData'
 import { getBills, getInventoryItems, getRentals, getSurfboards } from '../services/api'
 import { downloadBillPDF } from '../utils/billPdfGenerator'
@@ -1165,132 +1166,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Bill Receipt Preview Modal */}
       {selectedBill && (
-        <div
-          className="modal-backdrop"
-          onClick={() => setSelectedBill(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-bill-title"
-        >
-          <div className="bill-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="bill-modal-header">
-              <div>
-                <span className="modal-kicker">Catamaran Beach Restaurant · Official Guest Bill</span>
-                <h3 id="modal-bill-title" className="modal-title">
-                  {selectedBill.billNumber}
-                </h3>
-              </div>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setSelectedBill(null)}
-                aria-label="Close bill preview"
-              >
-                <IconX size={16} />
-              </button>
-            </div>
-
-            <div className="bill-receipt-paper" id="dash-thermal-print-target">
-              <div className="receipt-header-center">
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
-                  <img src={logoImg} alt="Catamaran Beach Restaurant" style={{ maxHeight: '60px', width: 'auto' }} />
-                </div>
-                <span className="receipt-brand">CATAMARAN BEACH RESTAURANT</span>
-                <span className="receipt-sub">Dewata Beach, Galle, Sri Lanka</span>
-                <span className="receipt-date">
-                  {todayFormatted} · {selectedBill.time}
-                </span>
-                <span className="receipt-cashier">Cashier: {selectedBill.cashier}</span>
-              </div>
-
-              <div className="receipt-divider" />
-
-              <div className="receipt-meta-grid">
-                <div>
-                  <span className="receipt-meta-label">Sale Category</span>
-                  <strong className="receipt-meta-val">{selectedBill.saleType}</strong>
-                </div>
-                <div>
-                  <span className="receipt-meta-label">Payment</span>
-                  <strong className="receipt-meta-val">{selectedBill.paymentMethod}</strong>
-                </div>
-              </div>
-
-              <div className="receipt-divider" />
-
-              <table className="receipt-items-table">
-                <thead>
-                  <tr>
-                    <th>Item</th>
-                    <th className="th-qty">Qty</th>
-                    <th className="th-price">Rate</th>
-                    <th className="th-amount">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedBill.items.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.name}</td>
-                      <td className="th-qty">{item.quantity}</td>
-                      <td className="th-price">{formatLKR(item.unitPrice)}</td>
-                      <td className="th-amount">{formatLKR(item.total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div className="receipt-divider" />
-
-              <div className="receipt-summary-lines">
-                <div className="receipt-line">
-                  <span>Subtotal</span>
-                  <span>{formatLKR(selectedBill.total)}</span>
-                </div>
-                <div className="receipt-line">
-                  <span>Service & Tax (Inclusive)</span>
-                  <span>Rs. 0.00</span>
-                </div>
-                <div className="receipt-line-total">
-                  <span>Grand Total</span>
-                  <strong className="receipt-total-val">{formatLKR(selectedBill.total)}</strong>
-                </div>
-              </div>
-
-              <div className="receipt-footer-text">
-                <span>Thank you for dining at Catamaran Beach Restaurant!</span>
-                <span className="receipt-demo-watermark">OFFICIAL RECEIPT COPY</span>
-              </div>
-            </div>
-
-            <div className="modal-actions-row">
-              <button
-                type="button"
-                className="btn-print"
-                onClick={() => {
-                  printThermalReceipt('dash-thermal-print-target')
-                }}
-              >
-                <IconPrinter size={16} />
-                <span>Print 80mm Receipt</span>
-              </button>
-
-              <button
-                type="button"
-                className="btn-print"
-                style={{ backgroundColor: '#0284c7', color: '#ffffff', borderColor: '#0284c7' }}
-                onClick={() => handleDownloadRecentBill(selectedBill)}
-                title="Download official PDF invoice"
-              >
-                <IconDownload size={16} />
-                <span>Download PDF</span>
-              </button>
-
-              <button type="button" className="btn-dismiss" onClick={() => setSelectedBill(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProfessionalReceipt
+          billNumber={selectedBill.billNumber}
+          date={todayFormatted}
+          time={selectedBill.time}
+          orderType={selectedBill.saleType}
+          cashier={selectedBill.cashier}
+          paymentMethod={selectedBill.paymentMethod}
+          items={selectedBill.items.map((it: any) => ({
+            id: it.id || it._id,
+            name: it.name,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            total: it.total,
+            code: it.code
+          }))}
+          subtotal={selectedBill.total}
+          discount={0}
+          serviceCharge={0}
+          total={selectedBill.total}
+          amountTendered={selectedBill.amountTendered}
+          changeDue={selectedBill.changeDue}
+          splitCashAmount={selectedBill.splitCashAmount}
+          splitCardAmount={selectedBill.splitCardAmount}
+          isReprint={true}
+          onClose={() => setSelectedBill(null)}
+        />
       )}
     </div>
   )

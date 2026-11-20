@@ -123,6 +123,48 @@ app.get('/api/system/version', (req, res) => {
 });
 
 // ============================================================
+// AUTHENTICATION API
+// ============================================================
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    const expectedEmail = process.env.ADMIN_EMAIL;
+    const expectedPassword = process.env.ADMIN_PASSWORD;
+
+    if (!expectedEmail || !expectedPassword) {
+      console.error('ADMIN_EMAIL or ADMIN_PASSWORD environment variable is not configured');
+      return res.status(500).json({ message: 'Server authentication configuration missing in .env' });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email address and password are required' });
+    }
+
+    if (
+      typeof email === 'string' &&
+      typeof password === 'string' &&
+      email.trim().toLowerCase() === expectedEmail.trim().toLowerCase() &&
+      password === expectedPassword
+    ) {
+      return res.json({
+        success: true,
+        token: 'auth_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9),
+        user: {
+          email: expectedEmail,
+          role: 'Admin / Manager',
+          name: 'Catamaran Management'
+        }
+      });
+    }
+
+    return res.status(401).json({ message: 'Invalid email address or password' });
+  } catch (err) {
+    console.error('Authentication error:', err);
+    return res.status(500).json({ message: 'Authentication service temporarily unavailable' });
+  }
+});
+
+// ============================================================
 // SYSTEM & POS SETTINGS API
 // ============================================================
 app.get('/api/settings', async (req, res) => {
